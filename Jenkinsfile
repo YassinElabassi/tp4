@@ -1,37 +1,54 @@
 pipeline {
-    agent any
+    agent any                        // Jenkins exécutera les étapes sur la machine maître (Windows)
+
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
+        IMAGE_NAME  = 'my-python-app'
+        REGISTRY    = credentials('docker-hub-credentials')      // ID configuré dans Jenkins
     }
+
     stages {
-        stage('Build') {
+
+        stage('Build Docker image') {
             steps {
-                sh 'echo "Building the application..."'
-                sh 'docker build -t my-python-app .'
+                echo "Building ${IMAGE_NAME}..."
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
-        stage('Test') {
+
+        stage('Tests (placeholder)') {
             steps {
-                sh 'echo "Running tests..."'
-                // Ajouter ici des commandes de test (ex: pytest)
+                echo 'Running tests...'
+                // Ajoute ici tes tests (pytest, unittest, etc.)
             }
         }
+
         stage('Push to Docker Hub') {
             steps {
-                sh 'echo "Pushing the Docker image to Docker Hub..."'
-                sh 'docker login -u ${DOCKER_HUB_CREDENTIALS_USR} -p ${DOCKER_HUB_CREDENTIALS_PSW}'
-                sh 'docker tag my-python-app ${DOCKER_HUB_CREDENTIALS_USR}/my-python-app:latest'
-                sh 'docker push ${DOCKER_HUB_CREDENTIALS_USR}/my-python-app:latest'
+                echo "Pushing ${IMAGE_NAME} to Docker Hub..."
+                sh """
+                   docker login -u ${REGISTRY_USR} -p ${REGISTRY_PSW}
+                   docker tag ${IMAGE_NAME} ${REGISTRY_USR}/${IMAGE_NAME}:latest
+                   docker push ${REGISTRY_USR}/${IMAGE_NAME}:latest
+                """
             }
         }
-        stage('Deploy') {
+
+        // Décommenter si tu veux déployer automatiquement
+        /*
+        stage('Deploy to remote server') {
             steps {
-                sh 'echo "Deploying the application..."'
-                sh 'ssh user@remote-server "docker pull ${DOCKER_HUB_CREDENTIALS_USR}/my-python-app:latest"'
-                sh 'ssh user@remote-server "docker stop my-python-app || true"'
-                sh 'ssh user@remote-server "docker rm my-python-app || true"'
-                sh 'ssh user@remote-server "docker run -d -p 5000:5000 --name my-python-app ${DOCKER_HUB_CREDENTIALS_USR}/my-python-app:latest"'
+                sshagent(credentials: ['ssh-remote-server']) {
+                    sh '''
+                        ssh user@remote-server "
+                          docker pull ${REGISTRY_USR}/${IMAGE_NAME}:latest &&
+                          docker stop ${IMAGE_NAME} || true &&
+                          docker rm ${IMAGE_NAME}   || true &&
+                          docker run -d -p 5000:5000 --name ${IMAGE_NAME} ${REGISTRY_USR}/${IMAGE_NAME}:latest
+                        "
+                    '''
+                }
             }
         }
+        */
     }
 }
